@@ -6,16 +6,13 @@ const bcrypt = require('bcryptjs');
 const authController = {
   async register(req, res) {
     try {
-      const { username, password } = req.body;
-      if (!username || !password) {
-        return res.status(400).json({ message: 'Usuario y contraseña son requeridos.' });
-      }
+      const { username, password, nombre, domicio, postal, correo, rfc, razon_social, id_factura, rol } = req.body;
 
-      const user = await User.createUser({ username, password });
+      const user = await User.createUser({ username, password, nombre, domicio, postal, correo, rfc, razon_social, id_factura, rol });
       res.status(201).json({ message: 'Usuario registrado exitosamente.', user });
     } catch (error) {
-      if (error.message.includes('ya existe')) {
-        return res.status(409).json({ message: error.message });
+      if (error.message.includes('ya existe') || error.message.includes('requeridos')) {
+        return res.status(400).json({ message: error.message });
       }
       res.status(500).json({ message: 'Error en el servidor al registrar el usuario.', error: error.message });
     }
