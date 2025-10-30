@@ -35,7 +35,7 @@ const invoiceController = {
         product: {
           description: item.name,
           price: item.price,
-          sku: item.productId, // Asumiendo que existe productId
+          product_key: item.product_key, // Clave de Producto/Servicio del SAT
           tax_included: true, // Asumiendo que los precios incluyen impuestos
         }
       }));
@@ -46,7 +46,7 @@ const invoiceController = {
           legal_name: user.razon_social,
           email: user.correo,
           tax_id: user.rfc,
-          tax_system: '601', // "General de Ley Personas Morales", un default común.
+          tax_system: '616', // "Sin obligaciones fiscales", requerido para el RFC genérico.
           address: {
             zip: user.postal,
             street: user.domicio,

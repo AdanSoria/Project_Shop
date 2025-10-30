@@ -26,8 +26,10 @@ const createOrder = async (req, res) => {
         total += itemTotal;
         return {
           productId: item.productId,
+          name: product.name, // Añadir el nombre del producto
           quantity: item.quantity,
           price: product.price, // Guardar el precio histórico
+          product_key: product.product_key, // Añadir la clave del SAT
         };
       })
     );

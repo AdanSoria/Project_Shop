@@ -13,6 +13,7 @@
 # Esta carpeta se regenera con 'npm install'
 # ####################################################################
 node_modules/
+serviceAccountKey.json
 
 # ####################################################################
 # Archivos de Log y Reportes
