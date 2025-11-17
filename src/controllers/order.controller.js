@@ -1,8 +1,9 @@
+const stripe = require('../config/stripe');
 const Order = require('../models/order.model');
 const Cart = require('../models/cart.model');
 const Product = require('../models/product.model');
 
-// @desc    Crear una nueva orden desde el carrito
+// @desc    Crear una sesión de checkout de Stripe
 // @route   POST /api/orders/checkout
 // @access  Private
 const createOrder = async (req, res) => {
@@ -14,40 +15,45 @@ const createOrder = async (req, res) => {
       return res.status(400).json({ message: 'Tu carrito está vacío' });
     }
 
-    // 1. Obtener detalles de los productos y calcular el total
-    let total = 0;
-    const orderItems = await Promise.all(
+    // Create line_items for Stripe, ensuring to fetch the latest price from the DB
+    const line_items = await Promise.all(
       cart.items.map(async (item) => {
         const product = await Product.findById(item.productId);
         if (!product) {
+          // This error should be caught by the outer try-catch block
           throw new Error(`Producto con ID ${item.productId} no encontrado.`);
         }
-        const itemTotal = product.price * item.quantity;
-        total += itemTotal;
         return {
-          productId: item.productId,
-          name: product.name, // Añadir el nombre del producto
+          price_data: {
+            currency: 'mxn', // Change to your desired currency
+            product_data: {
+              name: product.name,
+              images: product.imageUrl ? [product.imageUrl] : [],
+            },
+            unit_amount: Math.round(product.price * 100), // Price in cents, rounded to avoid floating point issues
+          },
           quantity: item.quantity,
-          price: product.price, // Guardar el precio histórico
-          product_key: product.product_key, // Añadir la clave del SAT
         };
       })
     );
 
-    // 2. Crear la nueva orden
-    const createdOrder = await Order.createOrder({
-      userId,
-      items: orderItems,
-      total,
+    // Create a Stripe checkout session
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items,
+      mode: 'payment',
+      success_url: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/payment-cancelled`,
+      metadata: {
+        userId: userId,
+        cartId: cart.id,
+      },
     });
 
-    // 3. Vaciar el carrito del usuario
-    await Cart.clearCart(userId);
-
-    res.status(201).json(createdOrder);
+    res.status(200).json({ url: session.url });
   } catch (error) {
-    console.error('Error creating order:', error);
-    res.status(500).json({ message: 'Error en el servidor al crear la orden', error: error.message });
+    console.error('Error creating Stripe checkout session:', error);
+    res.status(500).json({ message: 'Error en el servidor al crear la sesión de pago', error: error.message });
   }
 };
 

@@ -8,7 +8,11 @@ require('./config/firebase.config');
 
 const app = express();
 
-// Middleware para parsear JSON
+// Stripe webhook needs raw body, so it must be registered before express.json()
+const webhookRoutes = require('./routes/webhook.routes');
+app.use('/api/webhooks', express.raw({ type: 'application/json' }), webhookRoutes);
+
+// Middleware para parsear JSON para todas las otras rutas
 app.use(express.json());
 
 //rutas

@@ -6,30 +6,30 @@ const invoiceController = {
   async createInvoice(req, res) {
     try {
       const { orderId } = req.body;
-      const userId = req.user.id; // Del middleware 'protect'
+      const userId = req.user.id; 
 
       if (!orderId) {
         return res.status(400).json({ message: 'El ID de la orden es requerido.' });
       }
 
-      // 1. Obtener datos del usuario para el cliente de la factura
+     
       const user = await User.findById(userId);
       if (!user || !user.rfc || !user.razon_social) {
         return res.status(400).json({ message: 'El usuario no tiene datos fiscales (RFC, Razón Social) para facturar.' });
       }
 
-      // 2. Obtener datos de la orden para los productos de la factura
+    
       const order = await Order.findById(orderId);
       if (!order) {
         return res.status(404).json({ message: 'La orden no fue encontrada.' });
       }
 
-      // Asegurarse de que el usuario está pidiendo una factura de su propia orden
+     
       if (order.userId.toString() !== userId) {
           return res.status(403).json({ message: 'No tienes autorización para facturar esta orden.' });
       }
 
-      // 3. Formatear los productos para Facturapi
+      //Formatear los productos para Facturapi
       const items = order.items.map(item => ({
         quantity: item.quantity,
         product: {

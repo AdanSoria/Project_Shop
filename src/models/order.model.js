@@ -3,12 +3,13 @@ const ordersCollection = db.collection('orders');
 const { FieldValue } = require('firebase-admin/firestore');
 
 const Order = {
-  async createOrder({ userId, items, total }) {
+  async createOrder({ userId, items, total, paymentId, status }) {
     const newOrderRef = await ordersCollection.add({
       userId,
       items,
       total,
-      status: 'pending',
+      paymentId,
+      status: status || 'pending',
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
