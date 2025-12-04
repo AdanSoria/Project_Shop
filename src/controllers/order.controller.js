@@ -57,6 +57,71 @@ const createOrder = async (req, res) => {
   }
 };
 
+// @desc    Crear un cargo directo con Stripe y registrar la orden
+// @route   POST /api/orders/charge
+// @access  Private
+const createDirectCharge = async (req, res) => {
+  const { source } = req.body; // 'source' is the tokenized card details from frontend (e.g., 'tok_visa')
+  const userId = req.user.id;
+
+  try {
+    // 1. Get user's cart
+    const cart = await Cart.getCartByUserId(userId);
+    if (!cart || cart.items.length === 0) {
+      return res.status(400).json({ message: 'Tu carrito está vacío' });
+    }
+
+    // 2. Recalculate total server-side to prevent tampering
+    let amount = 0;
+    await Promise.all(
+        cart.items.map(async (item) => {
+            const product = await Product.findById(item.productId);
+            if (!product) {
+                throw new Error(`Producto con ID ${item.productId} no encontrado.`);
+            }
+            amount += product.price * item.quantity;
+        })
+    );
+
+    const amountInCents = Math.round(amount * 100);
+    if (amountInCents <= 0) {
+        return res.status(400).json({ message: 'El monto del cargo debe ser positivo.' });
+    }
+
+    // 3. Create a charge using Stripe API
+    const charge = await stripe.charges.create({
+      amount: amountInCents,
+      currency: 'mxn',
+      source: source,
+      description: `Cargo para el usuario ${userId}`,
+    });
+
+    // 4. If charge is successful, create the order in the database
+    if (charge.paid) {
+      const order = await Order.createOrder({
+        userId,
+        items: cart.items,
+        total: amount, // Use the server-calculated total
+        paymentId: charge.id, // Store the charge ID
+        status: 'paid',
+      });
+
+      // 5. Clear the cart
+      await Cart.clearCart(userId);
+
+      res.status(201).json({ success: true, order });
+    } else {
+      res.status(400).json({ success: false, message: 'El pago no pudo ser procesado.' });
+    }
+  } catch (error) {
+    console.error('Error creating direct charge:', error);
+    if (error.raw && error.raw.message) {
+        return res.status(400).json({ message: error.raw.message });
+    }
+    res.status(500).json({ message: 'Error en el servidor al procesar el pago', error: error.message });
+  }
+};
+
 // @desc    Obtener el historial de órdenes del usuario
 // @route   GET /api/orders
 // @access  Private
@@ -108,4 +173,5 @@ module.exports = {
   createOrder,
   getUserOrders,
   getOrderById,
+  createDirectCharge,
 };
