@@ -1,4 +1,4 @@
-const db = require('../config/firebase.config');
+const { db } = require('../config/firebase.config');
 const ordersCollection = db.collection('orders');
 const { FieldValue } = require('firebase-admin/firestore');
 

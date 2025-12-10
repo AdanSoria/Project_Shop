@@ -1,5 +1,5 @@
 
-const db = require('../config/firebase.config');
+const { db } = require('../config/firebase.config');
 const cartsCollection = db.collection('carts');
 
 const Cart = {

@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "projectfinal-d7257"
+  },
+  "targets": {
+    "projectfinal-d7257": {
+      "hosting": {
+        "ittservicios": [
+          "ittservicios"
+        ]
+      }
+    }
+  }
+}

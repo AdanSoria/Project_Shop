@@ -1,5 +1,5 @@
 
-const db = require('../config/firebase.config');
+const { db, admin } = require('../config/firebase.config');
 const bcrypt = require('bcryptjs');
 
 const usersCollection = db.collection('users');
@@ -20,9 +20,25 @@ const User = {
         throw new Error('El correo electrónico ya existe.');
     }
 
+    // Crear usuario en Firebase Authentication
+    let firebaseUser;
+    try {
+      firebaseUser = await admin.auth().createUser({
+        email: correo,
+        password: password,
+        displayName: nombre || username,
+      });
+    } catch (error) {
+      if (error.code === 'auth/email-already-exists') {
+        throw new Error('El correo electrónico ya está registrado en Firebase Auth.');
+      }
+      throw new Error(`Error al crear usuario en Firebase Auth: ${error.message}`);
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
     
     const newUser = {
+      uid: firebaseUser.uid, // ID de Firebase Auth
       username,
       password: hashedPassword,
       correo,
@@ -35,9 +51,10 @@ const User = {
       rol: rol || 'cliente',
     };
 
-    const newUserRef = await usersCollection.add(newUser);
+    // Guardar en Firestore usando el UID de Firebase Auth como ID del documento
+    await usersCollection.doc(firebaseUser.uid).set(newUser);
 
-    return this.findById(newUserRef.id);
+    return this.findById(firebaseUser.uid);
   },
 
   async findByUsername(username) {
