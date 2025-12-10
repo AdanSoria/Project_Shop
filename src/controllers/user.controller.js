@@ -5,8 +5,7 @@ const User = require('../models/user.model');
 // @access  Private
 const getUserProfile = async (req, res) => {
   try {
-    // El middleware 'protect' ya nos da req.user, pero buscamos de nuevo para obtener datos frescos
-    const user = await User.findById(req.user.id).select('-password');
+    const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
@@ -21,26 +20,34 @@ const getUserProfile = async (req, res) => {
 // @access  Private
 const updateUserProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const { db } = require('../config/firebase.config');
+    const usersCollection = db.collection('users');
+    
+    // Obtener el documento del usuario
+    const userDoc = await usersCollection.doc(req.user.id).get();
 
-    if (user) {
-      // Actualizar solo los campos permitidos
-      user.name = req.body.name || user.name;
-      user.lastName = req.body.lastName || user.lastName;
-      user.address = req.body.address || user.address;
-      user.rfc = req.body.rfc || user.rfc;
-      // No permitimos cambiar el email o password aquí por simplicidad
-
-      const updatedUser = await user.save();
-      
-      // Devolvemos el usuario sin la contraseña
-      const userResponse = updatedUser.toObject();
-      delete userResponse.password;
-
-      res.json(userResponse);
-    } else {
-      res.status(404).json({ message: 'Usuario no encontrado' });
+    if (!userDoc.exists) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
     }
+
+    // Actualizar solo los campos permitidos
+    const allowedFields = ['nombre', 'domicio', 'postal', 'rfc', 'razon_social'];
+    const updates = {};
+    
+    allowedFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    });
+
+    // Actualizar en Firestore
+    if (Object.keys(updates).length > 0) {
+      await usersCollection.doc(req.user.id).update(updates);
+    }
+
+    // Obtener usuario actualizado
+    const updatedUser = await User.findById(req.user.id);
+    res.json(updatedUser);
   } catch (error) {
     res.status(500).json({ message: 'Error en el servidor', error: error.message });
   }

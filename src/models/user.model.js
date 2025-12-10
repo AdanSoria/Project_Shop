@@ -63,6 +63,7 @@ const User = {
       return null;
     }
     const userDoc = snapshot.docs[0];
+    // Incluir password para verificación de login
     return { id: userDoc.id, ...userDoc.data() };
   },
 
@@ -80,6 +81,7 @@ const User = {
     if (!userDoc.exists) {
       return null;
     }
+    // NO incluir password cuando se obtiene el perfil
     const { password, ...userData } = userDoc.data();
     return { id: userDoc.id, ...userData };
   },
