@@ -20,8 +20,13 @@ const Navbar = () => {
         <div className="flex justify-between h-16">
           {/* Logo y Enlaces Principales */}
           <div className="flex items-center">
-            <Link to="/" className="text-2xl font-bold text-primary">
-              🛒 E-Shop
+            <Link to="/" className="flex items-center gap-3">
+              <img 
+                src="/tec tepic.png" 
+                alt="TEC Tepic Logo" 
+                className="h-12 w-auto"
+              />
+              <span className="text-2xl font-bold text-primary">E-Shop</span>
             </Link>
             
             <div className="hidden md:flex ml-10 space-x-8">
