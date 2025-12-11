@@ -2,6 +2,8 @@ const stripe = require('../config/stripe');
 const Order = require('../models/order.model');
 const Cart = require('../models/cart.model');
 const Product = require('../models/product.model');
+const emailService = require('../services/email.service');
+const User = require('../models/user.model');
 
 // @desc    Crear una sesión de checkout de Stripe
 // @route   POST /api/orders/checkout
@@ -108,6 +110,31 @@ const createDirectCharge = async (req, res) => {
 
       // 5. Clear the cart
       await Cart.clearCart(userId);
+
+      // 6. Obtener datos del usuario para enviar el correo
+      try {
+        const user = await User.findById(userId);
+        if (user && user.correo) {
+          // Obtener detalles de productos para el email
+          const orderWithDetails = { ...order };
+          orderWithDetails.items = await Promise.all(
+            order.items.map(async (item) => {
+              const product = await Product.findById(item.productId);
+              return {
+                ...item,
+                product: product ? { name: product.name } : { name: 'Producto' }
+              };
+            })
+          );
+
+          // Enviar correo de confirmación
+          await emailService.sendOrderConfirmation(orderWithDetails, user);
+          console.log('✅ Email de confirmación enviado para orden:', order.id);
+        }
+      } catch (emailError) {
+        // Si falla el email, no afecta la orden
+        console.error('⚠️ Error al enviar email (orden creada exitosamente):', emailError.message);
+      }
 
       res.status(201).json({ success: true, order });
     } else {

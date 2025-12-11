@@ -2,6 +2,8 @@ const stripe = require('../config/stripe');
 const Order = require('../models/order.model');
 const Cart = require('../models/cart.model');
 const Product = require('../models/product.model');
+const emailService = require('../services/email.service');
+const User = require('../models/user.model');
 
 const handleStripeWebhook = async (req, res) => {
   const sig = req.headers['stripe-signature'];
@@ -42,7 +44,7 @@ const handleStripeWebhook = async (req, res) => {
       }
 
       // Create the order in your database
-      await Order.createOrder({
+      const order = await Order.createOrder({
         userId,
         items: cart.items,
         total,
@@ -52,6 +54,30 @@ const handleStripeWebhook = async (req, res) => {
 
       // Clear the user's cart
       await Cart.clearCart(userId);
+
+      // Enviar correo de confirmación
+      try {
+        const user = await User.findById(userId);
+        if (user && user.correo) {
+          // Obtener detalles de productos para el email
+          const orderWithDetails = { ...order };
+          orderWithDetails.items = await Promise.all(
+            order.items.map(async (item) => {
+              const product = await Product.findById(item.productId);
+              return {
+                ...item,
+                product: product ? { name: product.name } : { name: 'Producto' }
+              };
+            })
+          );
+
+          await emailService.sendOrderConfirmation(orderWithDetails, user);
+          console.log('✅ Email de confirmación enviado para orden:', order.id);
+        }
+      } catch (emailError) {
+        // Si falla el email, no afecta la orden
+        console.error('⚠️ Error al enviar email (orden creada exitosamente):', emailError.message);
+      }
 
       console.log(`✅ Successful payment for user ${userId}. Order created and cart cleared.`);
 
